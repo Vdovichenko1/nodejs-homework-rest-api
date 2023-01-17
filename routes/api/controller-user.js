@@ -40,7 +40,7 @@ const loginUser = async (req, res, next) => {
         user: {
           email: user.email,
           subscription: user.subscription,
-          id: user._id,
+          token: token,
           avatarURL: user.avatarURL,
         },
       });
@@ -66,6 +66,7 @@ const logoutUser = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
+    console.log("1111");
     res
       .json({
         status: "success",
