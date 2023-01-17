@@ -3,6 +3,7 @@ const router = express.Router();
 const ctrlUsers = require("./controller-user");
 const Joi = require("joi");
 const userMiddleware = require("../../middlewares/user");
+const uploadsMiddleware = require("../../middlewares/uploads");
 
 const userSchema = Joi.object({
   password: Joi.string().required(),
@@ -35,6 +36,11 @@ router.patch(
   "/subscription",
   [userMiddleware, validator(updateSchema)],
   ctrlUsers.update
+);
+router.patch(
+  "/avatars",
+  [userMiddleware, uploadsMiddleware.single("userPhoto")],
+  ctrlUsers.updateUserPhoto
 );
 
 module.exports = router;
