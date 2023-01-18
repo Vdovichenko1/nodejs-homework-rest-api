@@ -2,7 +2,10 @@ const service = require("../../service/contacts");
 
 const get = async (_, res, next) => {
   try {
-    const results = await service.listContacts();
+    const results = await service.listContacts({
+      ...req.query,
+      owner: req.user._id,
+    });
     res.json({
       status: "success",
       code: 200,
@@ -18,9 +21,10 @@ const get = async (_, res, next) => {
 
 const getById = async (req, res, next) => {
   const { contactId } = req.params;
+  const { _id } = req.user;
 
   try {
-    const result = await service.getContactById(contactId);
+    const result = await service.getContactById({ _id: contactId, owner: _id });
     if (result) {
       res.json({
         status: "success",
@@ -43,8 +47,9 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   const body = req.body;
+  const { _id } = req.user;
   try {
-    const result = await service.addContact(body);
+    const result = await service.addContact({ ...body, owner: _id });
 
     res.status(201).json({
       status: "success",
@@ -59,9 +64,13 @@ const create = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   const { contactId } = req.params;
+  const { _id } = req.user;
   const body = req.body;
   try {
-    const result = await service.updateContact(contactId, body);
+    const result = await service.updateContact(
+      { _id: contactId, owner: _id },
+      body
+    );
     if (result) {
       res.json({
         status: "success",
@@ -85,9 +94,13 @@ const update = async (req, res, next) => {
 const updateFavorite = async (req, res, next) => {
   const { contactId } = req.params;
   const { favorite = false } = req.body;
+  const { _id } = req.user;
 
   try {
-    const result = await service.updateContact(contactId, { favorite });
+    const result = await service.updateContact(
+      { _id: contactId, owner: _id },
+      { favorite }
+    );
     if (result) {
       res.json({
         status: "success",
@@ -110,9 +123,10 @@ const updateFavorite = async (req, res, next) => {
 
 const remove = async (req, res, next) => {
   const { contactId } = req.params;
+  const { _id } = req.user;
 
   try {
-    const result = await service.removeContact(contactId);
+    const result = await service.removeContact({ _id: contactId, owner: _id });
     if (result) {
       res.json({
         status: "success",

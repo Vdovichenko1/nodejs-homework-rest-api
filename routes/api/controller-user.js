@@ -1,15 +1,17 @@
-const User = require("../../service/schemas/user");
 const service = require("../../service/users");
 const { hashPassword, comparePassword } = require("../../password");
 const { generateToken } = require("../../token");
+const gravatar = require("gravatar");
+const Jimp = require("jimp");
+const fs = require("fs/promises");
 
 const registerUser = async (req, res, next) => {
-  const user = new User(req.body);
+  const user = req.body;
   user.password = await hashPassword(user.password);
+  user.avatarURL = gravatar.url(user.email, { s: "200" }, false);
   try {
-    const { email, subscription } = await service.createUser(user);
-    await user.save();
-    res.status(200).json({ user: { email, subscription } }).end();
+    const { email, subscription, avatarURL } = await service.createUser(user);
+    res.status(200).json({ user: { email, subscription, avatarURL } }).end();
   } catch (e) {
     if (e.code === 11000) {
       res
@@ -38,7 +40,8 @@ const loginUser = async (req, res, next) => {
         user: {
           email: user.email,
           subscription: user.subscription,
-          id: user._id,
+          token: token,
+          avatarURL: user.avatarURL,
         },
       });
     } else {
@@ -63,6 +66,7 @@ const logoutUser = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
+    console.log("1111");
     res
       .json({
         status: "success",
@@ -86,30 +90,31 @@ const update = async (req, res) => {
   res.json({ email, subscription }).end();
 };
 
+const updateUserPhoto = async (req, res) => {
+  const { _id } = req.user;
+  const { path } = req.file;
+
+  try {
+    Jimp.read(path).then((path) => {
+      return path
+        .resize(250, 250) // resize
+        .write(`public/avatars/${_id}`); // save
+    });
+    await fs.unlink(path);
+    const { avatarURL } = await service.updateUser(_id, {
+      avatarURL: `/avatars/${_id}`,
+    });
+    res.status(200).json({ avatarURL }).end();
+  } catch (error) {
+    console.error(err);
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
   getCurrentUser,
   update,
+  updateUserPhoto,
 };
-
-// try {
-//   const user = await User.findOne({ email });
-
-//   if (user) {
-//     req.status(409).json("message", "Email in use");
-//     return res.redirect("/");
-//   }
-//   const newUser = new User({ email, subscription });
-//   newUser.setPassword(password);
-//   await newUser.save();
-//   req.status(201).json("user", {
-//     email: email,
-//     subscription: subscription,
-//   });
-//   res.redirect("/");
-// } catch (e) {
-//   console.error(e);
-//   next(e);
-// }

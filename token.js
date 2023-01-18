@@ -21,7 +21,7 @@ const verifyToken = (token) =>
     jwt.verify(
       token,
       process.env.JWT_SECRET,
-      { algorithms: "HS256" },
+      { algorithms: ["HS256"] },
       (err, payload) => {
         if (err) {
           reject(err);
