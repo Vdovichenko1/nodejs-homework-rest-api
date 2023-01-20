@@ -17,6 +17,12 @@ const updateSchema = Joi.object({
   subscription: Joi.string().valid("starter", "pro", "business").required(),
 });
 
+const userEmail = Joi.object({
+  email: Joi.string()
+    .email({ minDomainSegments: 2, tlds: { allow: ["com", "net"] } })
+    .required(),
+});
+
 const validator = (schema) => (req, res, next) => {
   const body = req.body;
   const valid = schema.validate(body);
@@ -42,5 +48,8 @@ router.patch(
   [userMiddleware, uploadsMiddleware.single("userPhoto")],
   ctrlUsers.updateUserPhoto
 );
+
+router.get("/verify/:verificationToken", ctrlUsers.verifyUserToken);
+router.post("/verify", validator(userEmail), ctrlUsers.verifyUserEmail);
 
 module.exports = router;
