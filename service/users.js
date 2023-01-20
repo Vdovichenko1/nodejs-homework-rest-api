@@ -13,7 +13,15 @@ const currentUser = async (id) => {
 };
 
 const updateUser = async (userId, body) => {
-  return User.findOneAndUpdate({ _id: userId }, body, { new: true });
+  return await User.findOneAndUpdate({ _id: userId }, body, { new: true });
+};
+
+const findVerifyToken = async (token) => {
+  return await User.findOneAndUpdate(
+    { verificationToken: token, verify: false },
+    { verificationToken: null, verify: true },
+    { new: true }
+  );
 };
 
 module.exports = {
@@ -21,4 +29,5 @@ module.exports = {
   regLogUser,
   currentUser,
   updateUser,
+  findVerifyToken,
 };

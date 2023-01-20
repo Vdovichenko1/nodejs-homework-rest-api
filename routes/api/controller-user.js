@@ -4,13 +4,41 @@ const { generateToken } = require("../../token");
 const gravatar = require("gravatar");
 const Jimp = require("jimp");
 const fs = require("fs/promises");
+const { v4: uuidv4 } = require("uuid");
+
+const sgMail = require("@sendgrid/mail");
+
+require("dotenv").config();
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const registerUser = async (req, res, next) => {
   const user = req.body;
   user.password = await hashPassword(user.password);
   user.avatarURL = gravatar.url(user.email, { s: "200" }, false);
+  user.verificationToken = uuidv4();
+
   try {
-    const { email, subscription, avatarURL } = await service.createUser(user);
+    const { email, subscription, avatarURL, verificationToken } =
+      await service.createUser(user);
+
+    const msg = {
+      to: email,
+      from: "vdovichencko96@gmail.com",
+      subject: "Thank you for registration",
+      text: "and easy to do anywhere, even with Node.js",
+      html: `<a href="http://localhost:3000/users/verify/${verificationToken}">Link verification</a>`,
+    };
+
+    sgMail
+      .send(msg)
+      .then(() => {
+        console.log("Email sent");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
     res.status(200).json({ user: { email, subscription, avatarURL } }).end();
   } catch (e) {
     if (e.code === 11000) {
@@ -31,7 +59,7 @@ const loginUser = async (req, res, next) => {
   const user = await service.regLogUser(email);
   const passwordMatches = await comparePassword(password, user.password);
   try {
-    if (passwordMatches) {
+    if (passwordMatches && user.verify) {
       const token = await generateToken({ id: user._id });
       service.updateUser(user._id, { token });
       res.json({
@@ -110,6 +138,54 @@ const updateUserPhoto = async (req, res) => {
   }
 };
 
+const verifyUserToken = async (req, res, next) => {
+  const { vetificationToken } = req.params;
+
+  try {
+    const userVerify = await service.findVerifyToken(vetificationToken);
+
+    if (!userVerify) {
+      res.status(404).json({ message: "User not found" }).end();
+    }
+    res.status(200).json({ message: "Verification successful" }).end();
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+};
+
+const verifyUserEmail = async (req, res, next) => {
+  const { email } = req.body;
+  const user = await service.regLogUser(email);
+
+  if (email !== user.email) {
+    res.status(400).json({ message: "missing required field email" }).end();
+  }
+  if (!user.verify) {
+    const msg = {
+      to: user.email,
+      from: "antonvdo@meta.ua",
+      subject: "Thank you for registration",
+      text: "and easy to do anywhere, even with Node.js",
+      html: `<a href="http://localhost:3000/users/verify/${user.verificationToken}">Link verification</a>`,
+    };
+
+    sgMail
+      .send(msg)
+      .then(() => {
+        console.log("Email sent");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  } else {
+    res
+      .status(400)
+      .json({ message: "Verification has already been passed" })
+      .end();
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -117,4 +193,6 @@ module.exports = {
   getCurrentUser,
   update,
   updateUserPhoto,
+  verifyUserToken,
+  verifyUserEmail,
 };
